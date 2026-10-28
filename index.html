@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Гимнастика 3D - Двусторонняя физика</title>
+<style>
+  body { margin: 0; overflow: hidden; background: #87CEEB; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; user-select: none; touch-action: none; }
+  canvas { display: block; }
+  #ui { position: absolute; inset: 0; pointer-events: none; }
+
+  .btn {
+    position: absolute;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 16px; color: #fff;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.4);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+    pointer-events: auto; cursor: pointer;
+    transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+    letter-spacing: 1px;
+  }
+  .btn:hover { background: rgba(255, 255, 255, 0.25); }
+  .btn:active { transform: scale(0.92); background: rgba(255, 255, 255, 0.4); }
+
+  .col-left { position: absolute; top: 25%; left: 25px; display: flex; flex-direction: column; gap: 15px; }
+  .col-left .btn { width: 110px; height: 65px; position: relative; }
+  #btn-twist { background: rgba(100, 200, 255, 0.25); border-color: rgba(100, 200, 255, 0.6); }
+  #btn-stick { background: rgba(255, 100, 100, 0.25); border-color: rgba(255, 100, 100, 0.6); }
+
+  .col-right { position: absolute; top: 25%; right: 25px; display: flex; flex-direction: column; gap: 15px; }
+  .col-right .btn { width: 110px; height: 65px; position: relative; }
+
+  .btn-spin {
+    position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+    width: 260px; height: 75px;
+    background: linear-gradient(135deg, rgba(255, 120, 0, 0.9), rgba(255, 50, 0, 0.9));
+    border: 2px solid rgba(255, 200, 100, 0.6);
+    border-radius: 24px;
+    font-size: 24px; letter-spacing: 2px;
+    box-shadow: 0 0 25px rgba(255, 100, 0, 0.5), inset 0 0 10px rgba(255,255,255,0.3);
+    pointer-events: auto; cursor: pointer; color: #fff;
+    font-weight: 900; text-transform: uppercase;
+    transition: all 0.1s;
+  }
+  .btn-spin:hover { transform: translateX(-50%) scale(1.02); }
+  .btn-spin:active { transform: translateX(-50%) scale(0.95); box-shadow: 0 0 40px rgba(255, 100, 0, 0.8); }
+
+  #score-container {
+    position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+    text-align: center; pointer-events: none;
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+  }
+  #score {
+    font-size: 32px; font-weight: 900; color: #fff; 
+    text-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    font-variant-numeric: tabular-nums;
+  }
+  #combo {
+    font-size: 16px; font-weight: 800; color: #ffeb3b; 
+    text-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    background: rgba(0,0,0,0.3); padding: 4px 12px; border-radius: 12px;
+    opacity: 0; transition: opacity 0.2s;
+  }
+  #status {
+    font-size: 14px; font-weight: 600; color: #fff; opacity: 0.9;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5); margin-top: 5px;
+  }
+</style>
+</head>
+<body>
+
+<div id="ui">
+  <div id="score-container">
+    <div id="score">0</div>
+    <div id="combo">COMBO x2</div>
+    <div id="status">Схватись за турник</div>
+  </div>
+  
+  <div class="col-left">
+    <div class="btn" id="btn-twist">TWIST</div>
+    <div class="btn" id="btn-stick">STICK</div>
+  </div>
+  
+  <div class="col-right">
+    <div class="btn" id="btn-arch">ARCH</div>
+    <div class="btn" id="btn-tuck">TUCK</div>
+    <div class="btn" id="btn-layout">LAYOUT</div>
+  </div>
+
+  <div class="btn-spin" id="btn-spin">РАСКРУТКА</div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+// --- Сцена ---
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x71bce8);
+scene.fog = new THREE.Fog(0x71bce8, 30, 100);
+
+const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 200);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+// --- Свет ---
+scene.add(new THREE.AmbientLight(0xffffff, 0.5)); 
+const sun = new THREE.DirectionalLight(0xfff5e6, 1.5);
+sun.position.set(15, 30, 15);
+sun.castShadow = true;
+sun.shadow.mapSize.width = 2048;
+sun.shadow.mapSize.height = 2048;
+sun.shadow.bias = -0.0005;
+scene.add(sun);
+
+// --- Текстура кирпича ---
+function createBrickTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256; canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#a02020'; ctx.fillRect(0, 0, 256, 256);
+  ctx.fillStyle = '#cc3333'; const bw = 64, bh = 32, gap = 4;
+  for (let y = 0; y < 256; y += bh + gap) {
+    const offset = (y / (bh + gap)) % 2 === 0 ? 0 : -(bw + gap) / 2;
+    for (let x = offset; x < 256; x += bw + gap) {
+      ctx.fillRect(x, y, bw, bh);
+      ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(x, y, bw, 4); ctx.fillStyle = '#cc3333';
+    }
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(10, 3);
+  return tex;
+}
+
+const floorMat = new THREE.MeshStandardMaterial({ color: 0xb32222, roughness: 0.9 });
+const wallMat = new THREE.MeshStandardMaterial({ map: createBrickTexture(), roughness: 0.8 });
+const metalMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.9, roughness: 0.2 });
+const skinMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.7 });
+
+// --- Карта ---
+const mapWidth = 64;
+const wallHeight = 14;
+
+const groundBox = new THREE.Mesh(new THREE.BoxGeometry(mapWidth, 2, 6), floorMat);
+groundBox.position.set(0, -1, 0);
+groundBox.receiveShadow = true;
+scene.add(groundBox);
+
+function createWall(x, z, w, d) {
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(w, wallHeight, d), wallMat);
+  wall.position.set(x, wallHeight/2 - 1, z);
+  wall.receiveShadow = true; wall.castShadow = true;
+  scene.add(wall);
+}
+createWall(-mapWidth/2 + 1, 0, 2, 6); 
+createWall(mapWidth/2 - 1, 0, 2, 6);  
+createWall(0, -3, mapWidth, 1);       
+
+const minX = -mapWidth/2 + 2.5;
+const maxX = mapWidth/2 - 2.5;
+
+// --- Турники ---
+const platforms = [];
+const barSpacing = 8;
+const barHeight = 4.5; 
+
+for (let i = -3; i <= 3; i++) {
+  const x = i * barSpacing;
+  const group = new THREE.Group();
+  const postGeo = new THREE.CylinderGeometry(0.08, 0.08, barHeight, 8);
+  [-1, 1].forEach(dz => {
+    const post = new THREE.Mesh(postGeo, metalMat);
+    post.position.set(0, barHeight/2, dz); post.castShadow = true; group.add(post);
+  });
+  const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.5, 8), metalMat);
+  bar.rotation.x = Math.PI / 2; bar.position.y = barHeight; bar.castShadow = true; group.add(bar);
+  group.position.x = x; scene.add(group);
+  platforms.push({ x: x, y: barHeight });
+}
+
+// --- Человечек ---
+const playerGroup = new THREE.Group(); 
+const bodyGroup = new THREE.Group();   
+playerGroup.add(bodyGroup);
+playerGroup.rotation.y = Math.PI / 2; 
+
+const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 1.0, 4, 8), skinMat);
+torso.position.y = 0.8; torso.castShadow = true; bodyGroup.add(torso);
+const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 16), skinMat);
+head.position.set(0, 1.6, 0); head.castShadow = true; bodyGroup.add(head);
+
+function createLimb(r, l, x, y) {
+  const pivot = new THREE.Group();
+  pivot.position.set(x, y, 0);
+  const limb = new THREE.Mesh(new THREE.CapsuleGeometry(r, l, 4, 8), skinMat);
+  limb.position.y = -l / 2; limb.castShadow = true;
+  pivot.add(limb); bodyGroup.add(pivot);
+  return pivot;
+}
+
+const leftArm = createLimb(0.07, 0.9, -0.3, 1.3);
+const rightArm = createLimb(0.07, 0.9, 0.3, 1.3);
+const leftLeg = createLimb(0.08, 1.1, -0.15, 0.4);
+const rightLeg = createLimb(0.08, 1.1, 0.15, 0.4);
+scene.add(playerGroup);
+
+// --- VFX ---
+const trailLength = 15;
+const trailPositions = new Float32Array(trailLength * 3);
+const trailGeo = new THREE.BufferGeometry();
+trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPositions, 3));
+const trailLine = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 }));
+scene.add(trailLine);
+let trailIndex = 0;
+
+const particleCount = 30;
+const particleGeo = new THREE.BufferGeometry();
+const particlePositions = new Float32Array(particleCount * 3);
+particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+const particleMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.3, transparent: true, opacity: 0.8 });
+const particles = new THREE.Points(particleGeo, particleMat);
+scene.add(particles);
+let particleVelocity = [];
+let particleTimer = 0;
+
+function spawnParticles(x, y) {
+  particleTimer = 0.5;
+  const pos = particles.geometry.attributes.position.array;
+  for (let i = 0; i < particleCount; i++) {
+    pos[i*3] = x; pos[i*3+1] = y; pos[i*3+2] = 0;
+    particleVelocity.push({ x: (Math.random() - 0.5) * 5, y: (Math.random() - 0.5) * 5 });
+  }
+  particles.geometry.attributes.position.needsUpdate = true;
+}
+
+// ==========================================
+// --- ЛОГИКА ИГРЫ ---
+// ==========================================
+let state = 'air'; 
+let velocityX = 0;
+let velocityY = 0;
+let rotationSpeed = 0; 
+let currentPose = 'layout'; 
+let isSticking = false; 
+
+let swingAngle = 0;
+let swingVelocity = 0;
+let swingDirection = 1; // 1 = летим вправо, -1 = летим влево (запоминаем при захвате)
+let currentBar = null;
+const armLength = 1.7; 
+let grabCooldown = 0; 
+let isUnwinding = false;
+
+let score = 0;
+let combo = 1;
+let currentTrickRotations = 0;
+let lastRotationAngle = 0;
+let isComboActive = false;
+
+const GRAVITY = -25;
+const JUMP_FORCE = 15; 
+const MAX_SWING_SPEED = 25; 
+const FEET_OFFSET = 0.7; 
+const AIR_CONTROL = 15; 
+
+const startPos = new THREE.Vector3(-15, 7, 0); 
+const keys = {};
+addEventListener('keydown', e => keys[e.code] = true);
+addEventListener('keyup', e => keys[e.code] = false);
+
+const scoreEl = document.getElementById('score');
+const comboEl = document.getElementById('combo');
+const statusEl = document.getElementById('status');
+
+function updateUI(statusText) {
+  statusEl.innerHTML = statusText;
+  scoreEl.textContent = score;
+  if (combo > 1) { comboEl.textContent = `COMBO x${combo}`; comboEl.style.opacity = 1; } else { comboEl.style.opacity = 0; }
+}
+
+function addScore(amount) { score += amount * combo; scoreEl.textContent = score; }
+function breakCombo() { combo = 1; isComboActive = false; comboEl.style.opacity = 0; }
+
+function resetPlayer() {
+  playerGroup.position.copy(startPos);
+  bodyGroup.rotation.set(0, 0, 0);
+  velocityX = 4; velocityY = 0; rotationSpeed = -3; state = 'air'; grabCooldown = 0.5;
+  breakCombo(); updateUI("Схватись за турник");
+}
+
+// --- UI ---
+const btnSpin = document.getElementById('btn-spin');
+btnSpin.addEventListener('pointerdown', (e) => {
+  e.preventDefault(); isUnwinding = true;
+  if (state === 'hanging') { currentPose = 'layout'; updateUI("Раскрутка! 🌀"); }
+});
+btnSpin.addEventListener('pointerup', () => isUnwinding = false);
+btnSpin.addEventListener('pointerleave', () => isUnwinding = false);
+
+document.getElementById('btn-stick').addEventListener('pointerdown', () => {
+  if (state === 'air') { isSticking = true; rotationSpeed = 0; bodyGroup.rotation.x = 0; }
+});
+
+document.getElementById('btn-tuck').addEventListener('pointerdown', () => {
+  if (state === 'air') { currentPose = 'tuck'; rotationSpeed *= 1.8; velocityY -= 2; }
+});
+
+document.getElementById('btn-arch').addEventListener('pointerdown', () => {
+  if (state === 'air') { currentPose = 'arch'; rotationSpeed *= 0.5; velocityY += 1; }
+});
+
+document.getElementById('btn-layout').addEventListener('pointerdown', () => {
+  if (state === 'air') { currentPose = 'layout'; rotationSpeed = rotationSpeed > 0 ? 3 : -3; }
+});
+
+document.getElementById('btn-twist').addEventListener('pointerdown', () => {
+  if (state === 'air') bodyGroup.rotation.y += Math.PI; 
+});
+
+// --- Экшн (Пробел / Клик по экрану) ---
+function actionButton() {
+  if (state === 'hanging') {
+    state = 'air';
+    grabCooldown = 0.6; 
+    
+    // Вылет зависит от направления раскачки и её силы
+    velocityX = swingVelocity * Math.cos(swingAngle) * 0.8;
+    velocityY = Math.sin(swingAngle) * swingVelocity * 0.8 + 2;
+    
+    // Если раскачка слабая, но мы отцепляемся, добавляем импульс в сторону движения
+    if (Math.abs(velocityX) < 3) velocityX = 3 * swingDirection;
+    
+    rotationSpeed = swingVelocity * 0.5; 
+    isSticking = false;
+    if (combo > 1) updateUI("В полете! Комбо сохранено!"); else updateUI("В полете!");
+  } else if (state === 'grounded') {
+    state = 'air'; velocityY = JUMP_FORCE; velocityX = 6; rotationSpeed = -4; grabCooldown = 0.2;
+  }
+}
+
+renderer.domElement.addEventListener('pointerdown', actionButton);
+addEventListener('keydown', e => { if (e.code === 'Space') actionButton(); });
+
+// ==========================================
+// --- ИГРОВОЙ ЦИКЛ ---
+// ==========================================
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05); 
+
+  if (grabCooldown > 0) grabCooldown -= dt;
+
+  // Управление в полете (влияет на скорость и направление)
+  if (state === 'air') {
+    let moveDir = 0;
+    if (keys['KeyA'] || keys['ArrowLeft']) moveDir -= 1;
+    if (keys['KeyD'] || keys['ArrowRight']) moveDir += 1;
+    // Плавное изменение скорости
+    velocityX += moveDir * AIR_CONTROL * dt;
+  }
+
+  // ФИЗИКА
+  if (state === 'air') {
+    velocityY += GRAVITY * dt;
+    playerGroup.position.x += velocityX * dt;
+    playerGroup.position.y += velocityY * dt;
+
+    if (!isSticking) {
+      bodyGroup.rotation.x += rotationSpeed * dt;
+      const currentAngle = bodyGroup.rotation.x;
+      if (Math.abs(currentAngle - lastRotationAngle) > Math.PI * 2) {
+        currentTrickRotations++;
+        lastRotationAngle = currentAngle;
+        addScore(100); updateUI("Сальто! +100"); isComboActive = true;
+      }
+    }
+
+    // Стены
+    if (playerGroup.position.x < minX) {
+      playerGroup.position.x = minX; velocityX = Math.abs(velocityX) * 0.6; rotationSpeed *= -0.5; spawnParticles(playerGroup.position.x, playerGroup.position.y);
+    } else if (playerGroup.position.x > maxX) {
+      playerGroup.position.x = maxX; velocityX = -Math.abs(velocityX) * 0.6; rotationSpeed *= -0.5; spawnParticles(playerGroup.position.x, playerGroup.position.y);
+    }
+
+    // ЗАХВАТ
+    if (grabCooldown <= 0) {
+      const handHeight = 1.6; 
+      for (let p of platforms) {
+        const distX = Math.abs(playerGroup.position.x - p.x);
+        const handY = playerGroup.position.y + handHeight;
+        const distY = Math.abs(handY - p.y);
+
+        if (distX < 1.2 && distY < 1.0) {
+          state = 'hanging';
+          currentBar = p;
+          playerGroup.position.x = p.x;
+          playerGroup.position.y = p.y - armLength;
+          
+          // ЗАПОМИНАЕМ НАПРАВЛЕНИЕ ПОЛЕТА
+          swingDirection = velocityX >= 0 ? 1 : -1; 
+          
+          // Если летели влево, начинаем качаться с левого угла
+          swingAngle = swingDirection === 1 ? -0.5 : 0.5; 
+          swingVelocity = velocityX * 0.2; 
+          
+          velocityX = 0; velocityY = 0;
+          bodyGroup.rotation.x = -swingAngle;
+          lastRotationAngle = 0;
+          
+          if (isComboActive) { combo++; addScore(500); updateUI("Схватился! Комбо x" + combo); } 
+          else { addScore(50); updateUI("Схватился!"); }
+          spawnParticles(p.x, p.y);
+          break;
+        }
+      }
+    }
+
+    // ЗЕМЛЯ
+    if (playerGroup.position.y <= FEET_OFFSET && state === 'air') {
+      playerGroup.position.y = FEET_OFFSET; state = 'grounded'; bodyGroup.rotation.x = 0;
+      velocityX = 0; velocityY = 0;
+      if (combo > 1) { updateUI("Падение! Комбо сгорело..."); breakCombo(); } 
+      else { updateUI("Упал на мат"); }
+      spawnParticles(playerGroup.position.x, playerGroup.position.y);
+    }
+  } 
+  else if (state === 'hanging') {
+    // Раскрутка
+    if (isUnwinding) {
+      swingVelocity += 35 * dt * swingDirection; // Крутим в сторону полета
+      if (Math.abs(swingVelocity) > MAX_SWING_SPEED) swingVelocity = MAX_SWING_SPEED * swingDirection;
+    }
+
+    // Маятник (гравитация всегда тянет вниз)
+    const gravityEffect = -(GRAVITY / armLength) * Math.sin(swingAngle);
+    swingVelocity += gravityEffect * dt;
+    swingVelocity *= 0.99; 
+    swingAngle += swingVelocity * dt;
+
+    // Позиция на турнике
+    playerGroup.position.x = currentBar.x + Math.sin(swingAngle) * armLength;
+    playerGroup.position.y = currentBar.y - Math.cos(swingAngle) * armLength;
+    
+    // Тело поворачивается в сторону качания
+    bodyGroup.rotation.x = -swingAngle;
+  }
+
+  // --- VFX ---
+  const posAttr = trailGeo.attributes.position.array;
+  posAttr[trailIndex * 3] = playerGroup.position.x;
+  posAttr[trailIndex * 3 + 1] = playerGroup.position.y + 1.0;
+  posAttr[trailIndex * 3 + 2] = 0;
+  trailIndex = (trailIndex + 1) % trailLength;
+  trailGeo.attributes.position.needsUpdate = true;
+  
+  const speed = Math.abs(velocityX) + Math.abs(velocityY) + Math.abs(rotationSpeed);
+  trailLine.material.opacity = Math.min(speed * 0.02, 0.6);
+
+  if (particleTimer > 0) {
+    particleTimer -= dt;
+    const pPos = particles.geometry.attributes.position.array;
+    for (let i = 0; i < particleCount; i++) {
+      pPos[i*3] += particleVelocity[i].x * dt;
+      pPos[i*3+1] += particleVelocity[i].y * dt;
+    }
+    particles.geometry.attributes.position.needsUpdate = true;
+    particleMat.opacity = particleTimer * 2; 
+  } else { particleMat.opacity = 0; }
+
+  // --- АНИМАЦИЯ ---
+  if (state === 'hanging') {
+    leftArm.rotation.x = Math.PI; rightArm.rotation.x = Math.PI;
+    if (isUnwinding) { leftLeg.rotation.x = 0; rightLeg.rotation.x = 0; } 
+    else { 
+      // Ноги болтаются в сторону качания
+      leftLeg.rotation.x = 0.2 + swingVelocity * 0.1;
+      rightLeg.rotation.x = 0.2 + swingVelocity * 0.1;
+    }
+  } else if (state === 'air') {
+    // Управление ногами в полете (A/D меняет анимацию)
+    let legSwing = 0;
+    if (keys['KeyA'] || keys['ArrowLeft']) legSwing = 0.5;
+    if (keys['KeyD'] || keys['ArrowRight']) legSwing = -0.5;
+
+    if (currentPose === 'tuck') {
+      leftLeg.rotation.x = -Math.PI / 1.5; rightLeg.rotation.x = -Math.PI / 1.5;
+      leftArm.rotation.x = -Math.PI / 2; rightArm.rotation.x = -Math.PI / 2;
+    } else if (currentPose === 'arch') {
+      leftLeg.rotation.x = 0.5; rightLeg.rotation.x = 0.5;
+      leftArm.rotation.x = -0.5; rightArm.rotation.x = -0.5;
+    } else {
+      // В полете ноги немного двигаются в сторону полета
+      leftLeg.rotation.x = legSwing; rightLeg.rotation.x = -legSwing;
+      leftArm.rotation.x = Math.PI; rightArm.rotation.x = Math.PI;
+    }
+  } else {
+    leftArm.rotation.x = 0; rightArm.rotation.x = 0;
+    leftLeg.rotation.x = 0; rightLeg.rotation.x = 0; bodyGroup.rotation.x = 0;
+  }
+
+  // --- КАМЕРА ---
+  const targetCamX = playerGroup.position.x;
+  camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetCamX, 5 * dt);
+  camera.position.y = 5.0; camera.position.z = 16;  
+  camera.lookAt(camera.position.x, playerGroup.position.y + 0.5, 0);
+
+  renderer.render(scene, camera);
+}
+
+resetPlayer();
+camera.position.set(startPos.x, 5.0, 16); 
+animate();
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>
