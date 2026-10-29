@@ -2,41 +2,46 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Гимнастика 3D - Коллизии Стен</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Гимнастика 3D - Без Слэма</title>
 <style>
-  * { -webkit-touch-callout: none !important; -webkit-user-select: none !important; user-select: none !important; box-sizing: border-box; }
-  body { margin: 0; overflow: hidden; background: #87CEEB; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; touch-action: none; -webkit-tap-highlight-color: transparent; }
+  * { 
+    -webkit-touch-callout: none !important; -webkit-user-select: none !important; user-select: none !important; box-sizing: border-box; -webkit-tap-highlight-color: transparent;
+  }
+  html, body { touch-action: manipulation; overscroll-behavior: none; margin: 0; overflow: hidden; background: #87CEEB; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
   canvas { display: block; width: 100vw; height: 100vh; }
   #ui { position: absolute; inset: 0; pointer-events: none; }
 
   /* --- МЕНЮ --- */
   #menu-overlay {
-    position: absolute; inset: 0; background: rgba(0, 0, 0, 0.7);
+    position: absolute; inset: 0; background: rgba(0, 0, 0, 0.75);
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    pointer-events: auto; z-index: 100; transition: opacity 0.3s ease;
-    padding: 20px;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    padding-top: 30px; pointer-events: auto; z-index: 100; transition: opacity 0.3s ease; overflow-y: auto;
   }
   #menu-overlay.hidden { opacity: 0; pointer-events: none; }
+  .menu-title { font-size: 24px; font-weight: 900; color: #fff; text-shadow: 0 4px 10px rgba(0,0,0,0.5); margin-bottom: 15px; text-transform: uppercase; letter-spacing: 2px; text-align: center; }
+  .section-title { font-size: 13px; color: #aaa; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
   
-  .menu-title { font-size: 28px; font-weight: 900; color: #fff; text-shadow: 0 4px 10px rgba(0,0,0,0.5); margin-bottom: 20px; text-transform: uppercase; letter-spacing: 2px; text-align: center; }
-  .section-title { font-size: 14px; color: #aaa; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
-  
-  .skin-container { display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; justify-content: center; }
-  .skin-card { width: 70px; height: 90px; background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; color: #fff; font-size: 11px; font-weight: bold; }
+  .skin-container { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; justify-content: center; }
+  .skin-card { width: 65px; height: 80px; background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; color: #fff; font-size: 10px; font-weight: bold; }
   .skin-card.active { border-color: #ffeb3b; background: rgba(255, 235, 59, 0.2); box-shadow: 0 0 15px rgba(255, 235, 59, 0.5); }
-  .skin-icon { width: 25px; height: 40px; border-radius: 6px; margin-bottom: 6px; }
+  .skin-icon { width: 20px; height: 35px; border-radius: 6px; margin-bottom: 5px; }
   .icon-base { background: #777; }
   .icon-gold { background: linear-gradient(135deg, #ffd700, #b8860b); }
   .icon-cape { background: #777; position: relative; overflow: hidden; }
   .icon-cape::after { content: ''; position: absolute; bottom: 0; right: -5px; width: 15px; height: 25px; background: #d32f2f; transform: rotate(15deg); border-radius: 3px; }
 
-  .map-container { display: flex; gap: 15px; margin-bottom: 30px; flex-wrap: wrap; justify-content: center; }
-  .map-card { width: 120px; height: 80px; background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; color: #fff; font-size: 13px; font-weight: bold; text-align: center; }
+  .map-container { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; justify-content: center; }
+  .map-card { width: 100px; height: 60px; background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; color: #fff; font-size: 12px; font-weight: bold; text-align: center; }
   .map-card.active { border-color: #4caf50; background: rgba(76, 175, 80, 0.2); box-shadow: 0 0 15px rgba(76, 175, 80, 0.5); }
-  .map-desc { font-size: 10px; color: #ccc; font-weight: normal; margin-top: 5px; }
-  .btn-play { padding: 15px 50px; font-size: 20px; font-weight: 900; color: #fff; text-transform: uppercase; letter-spacing: 2px; background: linear-gradient(135deg, #4caf50, #2e7d32); border: 3px solid rgba(255, 255, 255, 0.5); border-radius: 30px; cursor: pointer; box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
+  .map-desc { font-size: 9px; color: #ccc; font-weight: normal; margin-top: 3px; }
+
+  .cam-container { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; }
+  .cam-card { padding: 10px 20px; background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 12px; cursor: pointer; color: #fff; font-size: 12px; font-weight: bold; }
+  .cam-card.active { border-color: #2196f3; background: rgba(33, 150, 243, 0.2); box-shadow: 0 0 15px rgba(33, 150, 243, 0.5); }
+
+  .btn-play { padding: 12px 40px; font-size: 18px; font-weight: 900; color: #fff; text-transform: uppercase; letter-spacing: 2px; background: linear-gradient(135deg, #4caf50, #2e7d32); border: 3px solid rgba(255, 255, 255, 0.5); border-radius: 30px; cursor: pointer; box-shadow: 0 8px 20px rgba(0,0,0,0.3); margin-bottom: 20px;}
   .btn-play:active { transform: scale(0.95); }
 
   /* --- ИГРОВОЙ ИНТЕРФЕЙС --- */
@@ -62,18 +67,28 @@
 
 <div id="menu-overlay">
   <div class="menu-title">ГИМНАСТИКА 3D</div>
+  
   <div class="section-title">Скины</div>
   <div class="skin-container">
     <div class="skin-card" data-skin="base"><div class="skin-icon icon-base"></div>Серый</div>
     <div class="skin-card" data-skin="gold"><div class="skin-icon icon-gold"></div>Золотой</div>
     <div class="skin-card" data-skin="cape"><div class="skin-icon icon-cape"></div>Плащ</div>
   </div>
+
   <div class="section-title">Карты</div>
   <div class="map-container">
-    <div class="map-card active" data-map="training">Тренировка<div class="map-desc">Батуты и стены</div></div>
-    <div class="map-card" data-map="obstacle">Полоса<div class="map-desc">Шипы и высоты</div></div>
-    <div class="map-card" data-map="hardcore">Хардкор<div class="map-desc">Высоко и опасно</div></div>
+    <div class="map-card active" data-map="training">Тренировка<div class="map-desc">Батуты</div></div>
+    <div class="map-card" data-map="obstacle">Полоса<div class="map-desc">Шипы</div></div>
+    <div class="map-card" data-map="hardcore">Хардкор<div class="map-desc">Высоко</div></div>
   </div>
+
+  <div class="section-title">Камера</div>
+  <div class="cam-container">
+    <div class="cam-card active" data-cam="side">Сбоку</div>
+    <div class="cam-card" data-cam="first">От 1-го лица</div>
+    <div class="cam-card" data-cam="third">От 3-го лица</div>
+  </div>
+
   <button class="btn-play" id="btn-play">ИГРАТЬ</button>
 </div>
 
@@ -87,7 +102,7 @@
 
   <div class="panel-left">
     <div class="btn" id="btn-left">ВЛЕВО<br>◀</div>
-    <div class="btn" id="btn-twist">TWIST</div>
+    <div class="btn" id="btn-reset">СБРОС<br>🔄</div>
   </div>
   <div class="panel-right">
     <div class="btn" id="btn-tuck">TUCK</div>
@@ -115,9 +130,9 @@ import * as THREE from 'three';
 // --- Сцена ---
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x71bce8);
-scene.fog = new THREE.Fog(0x71bce8, 30, 100);
+scene.fog = new THREE.Fog(0x71bce8, 20, 80);
 
-const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 200);
+const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 200);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(innerWidth, innerHeight);
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -145,7 +160,7 @@ const matCape = new THREE.MeshStandardMaterial({ color: 0xd32f2f, roughness: 0.8
 // --- Карта ---
 const levelGroup = new THREE.Group(); scene.add(levelGroup);
 const bars = []; const spikeZones = []; const trampolines = [];
-let minX = -50; let maxX = 50; // Глобальные границы (коллизии)
+let minX = -50; let maxX = 50; 
 
 function clearLevel() {
   while(levelGroup.children.length > 0){ levelGroup.remove(levelGroup.children[0]); }
@@ -154,33 +169,24 @@ function clearLevel() {
 
 function generateMap(mapType) {
   clearLevel();
-  
   const arenaLength = 160;
-  minX = -arenaLength/2 + 2; // Оставляем место для персонажа (радиус)
-  maxX = arenaLength/2 - 2;
+  minX = -arenaLength/2 + 2; maxX = arenaLength/2 - 2;
   
-  // Пол
   const ground = new THREE.Mesh(new THREE.BoxGeometry(arenaLength, 2, 10), floorMat);
   ground.position.set(0, -1, 0); ground.receiveShadow = true; levelGroup.add(ground);
 
-  // Задняя стена (декорация)
   const backWall = new THREE.Mesh(new THREE.BoxGeometry(arenaLength, 40, 2), wallMat);
   backWall.position.set(0, 19, -10); backWall.receiveShadow = true; levelGroup.add(backWall);
 
-  // Боковые стены (визуальные границы)
   const leftWall = new THREE.Mesh(new THREE.BoxGeometry(2, 40, 20), wallMat);
   leftWall.position.set(-arenaLength/2, 19, 0); levelGroup.add(leftWall);
-  
   const rightWall = new THREE.Mesh(new THREE.BoxGeometry(2, 40, 20), wallMat);
   rightWall.position.set(arenaLength/2, 19, 0); levelGroup.add(rightWall);
 
-  let currentX = -60; // Начинаем чуть дальше
-  let currentHeight = 4.5;
+  let currentX = -60; let currentHeight = 4.5;
 
   for (let i = 0; i < 25; i++) {
-    let barLen = 2.0;
-    let type = 'normal';
-
+    let barLen = 2.0; let type = 'normal';
     if (mapType === 'obstacle') {
       currentHeight += (Math.random() - 0.5) * 3;
       if (currentHeight < 3.5) currentHeight = 3.5;
@@ -217,20 +223,16 @@ function generateMap(mapType) {
       spike.position.set(currentX + 4, 0.25, 0); spike.receiveShadow = true; levelGroup.add(spike);
       spikeZones.push(currentX + 4);
     }
-
     let gap = 7 + Math.random() * 2;
     if (mapType === 'hardcore') gap = 9 + Math.random() * 3;
     currentX += gap;
   }
 
-  // Настенные турники
   for (let i = 0; i < 15; i++) {
-    const wx = -60 + i * 15;
-    const wy = 8 + Math.random() * 5; 
+    const wx = -60 + i * 15; const wy = 8 + Math.random() * 5; 
     const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.0, 8), metalMat);
     bar.rotation.x = Math.PI / 2; bar.position.set(wx, wy, -8); bar.castShadow = true;
-    levelGroup.add(bar);
-    bars.push({ x: wx, y: wy });
+    levelGroup.add(bar); bars.push({ x: wx, y: wy });
   }
 }
 
@@ -270,8 +272,7 @@ function applySkin(skinName) {
   if (skinName === 'gold') { allMeshes.forEach(mesh => mesh.material = matGold); } 
   else if (skinName === 'cape') { cape.visible = true; }
   document.querySelectorAll('.skin-card').forEach(el => el.classList.remove('active'));
-  const activeCard = document.querySelector(`[data-skin="${skinName}"]`);
-  if (activeCard) activeCard.classList.add('active');
+  document.querySelector(`[data-skin="${skinName}"]`).classList.add('active');
 }
 document.querySelectorAll('.skin-card').forEach(card => {
   card.addEventListener('click', (e) => { e.preventDefault(); applySkin(card.dataset.skin); });
@@ -280,14 +281,22 @@ applySkin(currentSkin);
 
 // Карты
 let currentMap = 'training';
-function selectMap(mapType) {
-  currentMap = mapType;
-  document.querySelectorAll('.map-card').forEach(el => el.classList.remove('active'));
-  const activeCard = document.querySelector(`[data-map="${mapType}"]`);
-  if (activeCard) activeCard.classList.add('active');
-}
 document.querySelectorAll('.map-card').forEach(card => {
-  card.addEventListener('click', (e) => { e.preventDefault(); selectMap(card.dataset.map); });
+  card.addEventListener('click', (e) => { 
+    e.preventDefault(); currentMap = card.dataset.map;
+    document.querySelectorAll('.map-card').forEach(el => el.classList.remove('active'));
+    card.classList.add('active');
+  });
+});
+
+// КАМЕРЫ
+let currentCameraMode = 'side';
+document.querySelectorAll('.cam-card').forEach(card => {
+  card.addEventListener('click', (e) => { 
+    e.preventDefault(); currentCameraMode = card.dataset.cam;
+    document.querySelectorAll('.cam-card').forEach(el => el.classList.remove('active'));
+    card.classList.add('active');
+  });
 });
 
 // --- VFX ---
@@ -320,12 +329,11 @@ let state = 'air', velocityX = 0, velocityY = 0, rotationSpeed = 0, currentPose 
 let swingAngle = 0, swingVelocity = 0, swingDirection = 1, currentBar = null, grabCooldown = 0, isUnwinding = false;
 let score = 0, combo = 1, isComboActive = false, lastRotationAngle = 0, perfectMultiplier = 1;
 
-let targetPoseValues = { armX: 0, legX: 0, torsoX: 0 };
+let currentPoseValues = { armX: 0, legX: 0, torsoX: 0 };
 
 const GRAVITY = -25, JUMP_FORCE = 15, MAX_SWING_SPEED = 18, FEET_OFFSET = 0.7, AIR_CONTROL = 15;
 let inputLeft = false, inputRight = false;
 
-// Стартовая позиция сдвинута влево
 const startPos = new THREE.Vector3(-40, 7, 0); 
 const keys = {};
 addEventListener('keydown', e => keys[e.code] = true);
@@ -344,6 +352,8 @@ function showPerfect() { perfectEl.classList.add('show'); setTimeout(() => perfe
 function resetPlayer() {
   playerGroup.position.copy(startPos); bodyGroup.rotation.set(0, 0, 0);
   velocityX = 6; velocityY = 0; rotationSpeed = -3; state = 'air'; grabCooldown = 0.5;
+  isSticking = false;
+  currentPoseValues = { armX: 0, legX: 0, torsoX: 0 };
   breakCombo(); updateUI("Схватись за турник");
 }
 
@@ -359,6 +369,7 @@ function bindBtn(id, downFn, upFn) {
 
 bindBtn('btn-left', () => inputLeft = true, () => inputLeft = false);
 bindBtn('btn-right', () => inputRight = true, () => inputRight = false);
+bindBtn('btn-reset', () => { resetPlayer(); });
 
 bindBtn('btn-spin', () => {
   isUnwinding = true;
@@ -366,36 +377,34 @@ bindBtn('btn-spin', () => {
   else if (state === 'air') { rotationSpeed -= 5; } 
 }, () => isUnwinding = false);
 
+// УБРАЛИ СЛЭМ (ВТОРУЮ ФУНКЦИЮ)
 bindBtn('btn-release', () => {
-  if (state === 'air') { velocityY = -30; velocityX *= 1.5; updateUI("Ударная волна! 💥"); } 
-  else { actionButton(); }
+  // Работает только если висим на турнике или стоим на земле
+  if (state === 'hanging' || state === 'grounded') {
+    actionButton();
+  }
 });
 
-bindBtn('btn-tuck', () => {
-  if (state === 'air') { currentPose = 'tuck'; rotationSpeed *= 1.5; velocityY -= 1.5; }
+bindBtn('btn-tuck', () => { 
+  currentPose = 'tuck'; 
+  if (state === 'air') { rotationSpeed *= 1.5; velocityY -= 1.5; } 
 });
-bindBtn('btn-arch', () => {
-  if (state === 'air') { currentPose = 'arch'; rotationSpeed *= 0.7; velocityY += 1.5; }
+bindBtn('btn-arch', () => { 
+  currentPose = 'arch'; 
+  if (state === 'air') { rotationSpeed *= 0.7; velocityY += 1.5; } 
 });
-bindBtn('btn-layout', () => {
-  if (state === 'air') { currentPose = 'layout'; }
-});
-bindBtn('btn-twist', () => {
-  if (state === 'air') { bodyGroup.rotation.y += Math.PI; } 
+bindBtn('btn-layout', () => { 
+  currentPose = 'layout'; 
 });
 
 function actionButton() {
   if (state === 'hanging') {
     state = 'air'; grabCooldown = 0.6; 
     if (Math.abs(swingVelocity) > MAX_SWING_SPEED * 0.8 && Math.abs(swingAngle) > 0.5) { showPerfect(); } else { perfectMultiplier = 1; }
-    
     velocityX = Math.cos(swingAngle) * swingVelocity * 0.9; 
     velocityY = Math.sin(swingAngle) * swingVelocity * 0.9;
     if (Math.abs(velocityX) < 3) velocityX = 3 * swingDirection;
-    
-    rotationSpeed = swingVelocity * 0.3; 
-    isSticking = false;
-    updateUI("В полете!");
+    rotationSpeed = swingVelocity * 0.3; isSticking = false; updateUI("В полете!");
   } else if (state === 'grounded') {
     state = 'air'; velocityY = JUMP_FORCE; velocityX = 6; rotationSpeed = -4; grabCooldown = 0.2;
   }
@@ -404,7 +413,6 @@ function actionButton() {
 renderer.domElement.addEventListener('pointerdown', actionButton);
 addEventListener('keydown', e => { 
   if (e.code === 'Space') actionButton(); 
-  if (e.code === 'ArrowDown' || e.code === 'KeyS') { if (state === 'air') { velocityY = -30; velocityX *= 1.5; } }
 });
 
 // --- ЦИКЛ ---
@@ -424,8 +432,8 @@ function animate() {
 
   if (!isPlaying) {
     const time = clock.getElapsedTime();
-    camera.position.x = Math.sin(time * 0.3) * 30; camera.position.z = Math.cos(time * 0.3) * 30;
-    camera.position.y = 10; camera.lookAt(0, 4, 0);
+    camera.position.x = Math.sin(time * 0.3) * 20; camera.position.z = Math.cos(time * 0.3) * 20;
+    camera.position.y = 8; camera.lookAt(0, 4, 0);
     if (currentSkin === 'cape') cape.rotation.x = Math.sin(time * 5) * 0.1;
     renderer.render(scene, camera); return;
   }
@@ -445,16 +453,15 @@ function animate() {
     playerGroup.position.x += velocityX * dt;
     playerGroup.position.y += velocityY * dt;
 
-    // КОЛЛИЗИИ СТЕН (Исправлено)
     if (playerGroup.position.x < minX) {
-      playerGroup.position.x = minX;
-      velocityX = Math.abs(velocityX) * 0.5; // Отскок вправо
-      rotationSpeed *= -0.5; // Меняем вращение
+      playerGroup.position.x = minX; 
+      velocityX = Math.abs(velocityX) * 0.5; 
+      rotationSpeed *= -0.5; 
       spawnParticles(playerGroup.position.x, playerGroup.position.y);
     } else if (playerGroup.position.x > maxX) {
-      playerGroup.position.x = maxX;
-      velocityX = -Math.abs(velocityX) * 0.5; // Отскок влево
-      rotationSpeed *= -0.5;
+      playerGroup.position.x = maxX; 
+      velocityX = -Math.abs(velocityX) * 0.5; 
+      rotationSpeed *= -0.5; 
       spawnParticles(playerGroup.position.x, playerGroup.position.y);
     }
 
@@ -489,8 +496,7 @@ function animate() {
           state = 'hanging'; currentBar = p; playerGroup.position.x = p.x; playerGroup.position.y = p.y - 1.7;
           swingVelocity = velocityX * 0.3; swingDirection = velocityX >= 0 ? 1 : -1; swingAngle = swingDirection === 1 ? -0.3 : 0.3; 
           velocityX = 0; velocityY = 0; 
-          bodyGroup.rotation.x = -swingAngle;
-          lastRotationAngle = 0;
+          bodyGroup.rotation.x = -swingAngle; lastRotationAngle = 0;
           if (isComboActive) { combo++; addScore(500); updateUI("Комбо x" + combo); } else { addScore(50); updateUI("Схватился!"); }
           spawnParticles(p.x, p.y); break;
         }
@@ -500,8 +506,11 @@ function animate() {
     if (playerGroup.position.y <= FEET_OFFSET && state === 'air') {
       const hitSpike = spikeZones.some(sx => Math.abs(playerGroup.position.x - sx) < 3.5);
       if (!hitSpike) {
-        playerGroup.position.y = FEET_OFFSET; state = 'grounded'; bodyGroup.rotation.x = 0;
-        velocityX = 0; velocityY = 0; updateUI("На мате"); spawnParticles(playerGroup.position.x, playerGroup.position.y);
+        playerGroup.position.y = FEET_OFFSET; 
+        state = 'grounded'; 
+        velocityX = 0; velocityY = 0; 
+        updateUI("Упал! Жми СБРОС"); 
+        spawnParticles(playerGroup.position.x, playerGroup.position.y);
       }
     }
   } 
@@ -529,39 +538,55 @@ function animate() {
 
   // ПЛАВНАЯ АНИМАЦИЯ
   if (state === 'hanging') {
-    targetPoseValues.armX = Math.PI;
-    targetPoseValues.legX = 0.2 + swingVelocity * 0.1;
+    currentPoseValues.armX = THREE.MathUtils.lerp(currentPoseValues.armX, Math.PI, 10 * dt);
+    currentPoseValues.legX = THREE.MathUtils.lerp(currentPoseValues.legX, 0.2 + swingVelocity * 0.1, 10 * dt);
   } else if (state === 'air') {
     if (currentPose === 'tuck') {
-      targetPoseValues.armX = -Math.PI / 2;
-      targetPoseValues.legX = -Math.PI / 1.5;
+      currentPoseValues.armX = THREE.MathUtils.lerp(currentPoseValues.armX, -Math.PI / 2, 10 * dt);
+      currentPoseValues.legX = THREE.MathUtils.lerp(currentPoseValues.legX, -Math.PI / 1.5, 10 * dt);
     } else if (currentPose === 'arch') {
-      targetPoseValues.armX = -0.5;
-      targetPoseValues.legX = 0.5;
+      currentPoseValues.armX = THREE.MathUtils.lerp(currentPoseValues.armX, -0.5, 10 * dt);
+      currentPoseValues.legX = THREE.MathUtils.lerp(currentPoseValues.legX, 0.5, 10 * dt);
     } else {
       let legSwing = 0; if (inputLeft) legSwing = 0.5; if (inputRight) legSwing = -0.5;
-      targetPoseValues.armX = Math.PI;
-      targetPoseValues.legX = legSwing;
+      currentPoseValues.armX = THREE.MathUtils.lerp(currentPoseValues.armX, Math.PI, 10 * dt);
+      currentPoseValues.legX = THREE.MathUtils.lerp(currentPoseValues.legX, legSwing, 10 * dt);
     }
-  } else {
-    targetPoseValues.armX = 0;
-    targetPoseValues.legX = 0;
+  } else if (state === 'grounded') {
+    currentPoseValues.armX = THREE.MathUtils.lerp(currentPoseValues.armX, Math.PI / 2, 10 * dt);
+    currentPoseValues.legX = THREE.MathUtils.lerp(currentPoseValues.legX, 0, 10 * dt);
+    bodyGroup.rotation.x = THREE.MathUtils.lerp(bodyGroup.rotation.x, Math.PI / 2, 10 * dt);
   }
 
-  const lerpSpeed = 8 * dt;
-  leftArm.rotation.x = THREE.MathUtils.lerp(leftArm.rotation.x, targetPoseValues.armX, lerpSpeed);
-  rightArm.rotation.x = THREE.MathUtils.lerp(rightArm.rotation.x, targetPoseValues.armX, lerpSpeed);
-  leftLeg.rotation.x = THREE.MathUtils.lerp(leftLeg.rotation.x, targetPoseValues.legX, lerpSpeed);
-  rightLeg.rotation.x = THREE.MathUtils.lerp(rightLeg.rotation.x, -targetPoseValues.legX, lerpSpeed);
+  leftArm.rotation.x = currentPoseValues.armX;
+  rightArm.rotation.x = currentPoseValues.armX;
+  leftLeg.rotation.x = currentPoseValues.legX;
+  rightLeg.rotation.x = -currentPoseValues.legX;
 
   if (currentSkin === 'cape') {
     const speed = Math.abs(velocityX) + Math.abs(velocityY) + Math.abs(rotationSpeed);
     const targetRot = Math.min(speed * 0.05, 1.2); cape.rotation.x = THREE.MathUtils.lerp(cape.rotation.x, targetRot, 0.1);
   }
 
+  // --- КАМЕРА ---
   const targetCamX = playerGroup.position.x;
-  camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetCamX, 5 * dt);
-  camera.position.y = 6.0; camera.position.z = 20; camera.lookAt(camera.position.x, playerGroup.position.y + 1.0, 0);
+  
+  if (currentCameraMode === 'side') {
+    camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetCamX, 5 * dt);
+    camera.position.y = THREE.MathUtils.lerp(camera.position.y, playerGroup.position.y + 2, 5 * dt);
+    camera.position.z = THREE.MathUtils.lerp(camera.position.z, 12, 5 * dt); 
+    camera.lookAt(targetCamX, playerGroup.position.y + 1.0, 0);
+  } else if (currentCameraMode === 'first') {
+    camera.position.x = playerGroup.position.x;
+    camera.position.y = playerGroup.position.y + 1.6; 
+    camera.position.z = 0;
+    camera.lookAt(playerGroup.position.x + 10, playerGroup.position.y + 1.6, 0); 
+  } else if (currentCameraMode === 'third') {
+    camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetCamX - 8, 5 * dt); 
+    camera.position.y = THREE.MathUtils.lerp(camera.position.y, playerGroup.position.y + 4, 5 * dt); 
+    camera.position.z = THREE.MathUtils.lerp(camera.position.z, 8, 5 * dt); 
+    camera.lookAt(targetCamX, playerGroup.position.y + 1.0, 0);
+  }
 
   renderer.render(scene, camera);
 }
